@@ -3,129 +3,123 @@ import { APIKEY } from "../Utils/api";
 import { useState, useEffect } from "react";
 
 const Card = () => {
-    const APIKey = APIKEY;
-    const [language, setLanguage] = useState(["en", "es", "it"])
-    const [location, setLocation] = useState({ lat: "", lon: "" });
-    const [address, setAddress] = useState({
-      address: {
-        town: "",
-        state: "",
-        country: "",
-        postcode: "",
-      },
-    });
-    const [weather, setWeather] = useState()
-    const [error, setError] = useState(null);
+  const APIKey = APIKEY;
+  const [searchInput, setSearchInput] = useState("");
+  const [location, setLocation] = useState({ lat: "", lon: "" });
+  const [address, setAddress] = useState({});
+  const [weather, setWeather] = useState(null);
+  const [error, setError] = useState(null);
 
+  const getWeatherData = async () => {
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&hourly=temperature_2m&current_weather=true&timezone=auto`
+    );
+    const data = await response.json();
+    setWeather(data);
+  };
 
-    const getWeatherData = async () => {
-        const weatherResponse = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&hourly=temperature_2m&current_weather=true&timezone=auto`
-        );      
-        const weatherData = await weatherResponse.json();
-        setWeather(weatherData);
+  const getAddressData = async () => {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lon}&zoom=10&format=json`
+    );
+    const data = await response.json();
+    setAddress(data.address);
+  };
 
-      };
-
-      const getAddressData = async () => {
-        const addressResponse = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lon}&zoom=10&format=json`
-          );
-          const addressData = await addressResponse.json();
-          setAddress({
-            address: {
-              town: addressData.address.town,
-              state: addressData.address.state,
-              country: addressData.address.country,
-              postcode: addressData.address.postcode,
-            },
-          });
-      }
-      
-      const handleGetLocation = () => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const latitude = position.coords.latitude.toString();
-              const longitude = position.coords.longitude.toString();
-              setLocation({ lat: latitude, lon: longitude });
-            },
-            (error) => {
-              setError(error.message);
-            }
-          );
-        } else {
-          setError("Geolocation is not supported by this browser.");
+  const handleGetLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setLocation({ lat: latitude.toString(), lon: longitude.toString() });
+        },
+        (error) => {
+          setError(error.message);
         }
-      };
-      
-      useEffect(() => {
-        if (location.lat && location.lon) {
-          getWeatherData();
-          getAddressData();
-        }
-      }, [location]);
-      
-
-    const searchHandler = (event) => {
-        const enteredCity = event.target.value;
-        setAddress(enteredCity);
+      );
+    } else {
+      setError("Geolocation is not supported by this browser.");
     }
 
-    const submitHandler = async (event) => {
-        event.preventDefault();
-      
-        const weatherData = await getWeather();
-        setWeather(weatherData);
-      };    
+  };
 
+  const searchHandler = (event) => {
+    const enteredCity = event.target.value;
+    setSearchInput(enteredCity);
+  };
 
+  const searchSubmitHandler = async (event) => {
+    event.preventDefault();
+    await getWeatherData();
+    
+  };
+
+  useEffect(() => {
+    if (location.lat && location.lon) {
+      getAddressData();
+    //   getWeatherData();
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if (Object.keys(address).length > 0) {
+      setSearchInput(`${address.town}, ${address.state}, ${address.country}`);
+    }
+  }, [address]);
 
   return (
     <>
       <div className="searchBar">
-        <form onSubmit={submitHandler}>
+        <form onSubmit={searchSubmitHandler}>
           <button type="button" onClick={handleGetLocation}>
             <FaMapMarkerAlt />
           </button>
           <input
             type="text"
+            value={searchInput}
             onChange={searchHandler}
-            placeholder="Enter a address"
+            placeholder="Enter an address"
           />
           <button type="submit">
             <FaSearch />
           </button>
         </form>
       </div>
-      <div className="todayWeatherContainer">
-        <img
-          src="../../public/images/weatherImages/sunny.png"
-          alt="cloudylogo"
-        />
-        <div>
-          <p>today</p>
-          <p>
-            {address ? address.address.town : "Find a City"}
-            <span>°C</span>
-          </p>
-        </div>
-        <p>Over Clouds</p>
+      {Object.keys(address).length > 0 && (
+        <div className="resultContainer">
+          <div className="todayWeatherContainer">
+            <img
+              src="../../public/images/weatherImages/sunny.png"
+              alt="cloudylogo"
+            />
+            <div>
+              <p>today</p>
+              <p>
+                {address.town}
+                <span> °C</span>
+              </p>
+            </div>
+            <p>Over Clouds</p>
 
-        <div>
-          <p>Wind</p>
-          <p>14 km/h</p>
-          <p>Humidity</p>
-          <p>80%</p>
-        </div>
-      </div>
+            <div>
+              <p>Wind</p>
+              <p>14 km/h</p>
+              <p>Humidity</p>
+              <p>80%</p>
+            </div>
+          </div>
 
-      <div className="nextDaysContainer"></div>
+          <div className="nextDaysContainer"></div>
+        </div>
+      )}
     </>
   );
-}
-
-export default Card
+};
+  
+  export default Card;
+  
+  
+  
 
 
 
